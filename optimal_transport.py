@@ -1,10 +1,11 @@
 import numpy as np
 import scipy.optimize
-
+import copy
+from random import random
 # change of plans, edges will be stored as an adjacency list form, with a dictionary and a list for each node
 
 
-f = open("/workspaces/optimal_transport/1brr-6v9x.txt", "r")
+f = open("/workspaces/optimal_transport/test_file.txt", "r")
 nodes_A = []
 nodes_B = []
 edges = {}
@@ -31,7 +32,13 @@ def cost_matrix(edges):
 
 def optimal_transport(cost_matrix):
     row_ind, col_ind = scipy.optimize.linear_sum_assignment(cost_matrix, True)
-    return row_ind, col_ind
+    score = 0
+    for k in range(len(row_ind)):
+        i = row_ind[k]
+        j = col_ind[k]
+        score += cost_matrix[i][j]
+    return row_ind, col_ind, score
+
 
 
 for lines in f:
@@ -65,14 +72,45 @@ print(cost_matrix(edges))
 print(optimal_transport(cost_matrix(edges)))
 
 
+###########################################################################################################################################################################
+
+
+#Now for the tweaks, we want to tweak a little bit in this optimal matching and get a close enough solution
+
+# for an nxn matrix 
+
+def suboptimal_find(cost_matrix):
+    matrix = copy.deepcopy(cost_matrix)
+    for i in range(10):
+        row_ind, col_ind, score = optimal_transport(matrix)
+        for k in range(len(row_ind)):
+            i = row_ind[k]
+            j = col_ind[k]
+            matrix[i][j] -= 0.008
+
+    row_ind, col_ind, score = optimal_transport(matrix)
+    score = 0
+    for k in range(len(row_ind)):
+        i = row_ind[k]
+        j = col_ind[k]
+        score += cost_matrix[i][j]
+    return row_ind, col_ind, score
+
+
+print(suboptimal_find(cost_matrix(edges)))
+
+# l = []
+# for i in range(10):
+#     l2 = []
+#     for j in range(10):
+#         l2.append(random())
+#     l.append(l2)
+
+# print(optimal_transport())
+
+# print(optimal_transport(suboptimal_find(np.array(l))))
 
 
 
-
-
-
-
-
-# change of plans, edges will be stored as an adjacency list form, with a dictionary and a list for each node
 
 
