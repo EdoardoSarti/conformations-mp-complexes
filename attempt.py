@@ -10,7 +10,7 @@ def bfs(node_A, adj_list):
     reachable_nodes = set()
     visited = {}
     parents = {}
-    print(adj_list)
+    # print(adj_list)
     for key in adj_list:
        
         visited[key] = False
@@ -77,11 +77,23 @@ def reachable_set(node_set, adj_list):
     return reachable_nodes
 
 
-def add_matching(node_S, node_T, subgraph_matrix, matching, y, original_matrix):
+def add_matching(node_S, node_T, subgraph_matrix, matching, y, original_matrix, n):
     # matching is the matching uptil now, we need to improve that
     # y is a potential implemented as a dictionary, y[node] gives the potential of the node
-
+    print(subgraph_matrix)
+    print(y)
+    print(matching)
+    
     # matching is a list of tuples, giving the matching from node_T to node_S, as a directed graph
+
+    if(len(matching) == len(node_S)):
+        return matching
+    
+    node_to_index_map = {}
+    for i in range(len(node_S)):
+        node_to_index_map[node_S[i]] = i
+    for j in range(len(node_T)):
+        node_to_index_map[node_T[j]] = j
     Rs = set()
     Rt = set()
     for pair in matching:
@@ -108,14 +120,17 @@ def add_matching(node_S, node_T, subgraph_matrix, matching, y, original_matrix):
                     adj_list[node_S[i]].append((node_T[j], subgraph_matrix[i][j][0]))
                 else:
                     adj_list[node_T[j]].append((node_S[i], subgraph_matrix[i][j][0]))
+    print(subgraph_matrix)
     print("adj_list", adj_list)
     Z = reachable_set(Rs, adj_list)
+    print(Z, Rt)
     if len(Z & Rt) == 0:
         # update y, i.e. no edges are tight
         delta = INF
         for i in range(len(original_matrix)):
             for j in range(len(original_matrix[i])):
-                delta = min(delta, original_matrix[i][j] - y[node_S[i]] - y[node_T[j]])
+                if node_S[i] in Z&S and node_T[j] in T-Z:
+                    delta = min(delta, original_matrix[i][j] - y[node_S[i]] - y[node_T[j]])
         # print(delta)
         # now add this value of delta to all vertices in Z & S and subtract from Z & T
         # print(Z, S, T)
@@ -125,34 +140,47 @@ def add_matching(node_S, node_T, subgraph_matrix, matching, y, original_matrix):
         for node in Z&T:
             y[node] -= delta
 
-        for i in range(len(original_matrix)):
+        for i in range(len(original_matrix)): # new tight edges
             for j in range(len(original_matrix[i])):
-                if original_matrix[i][j] == y[node_S[i]] + y[node_T[j]]:
+                print("hello")
+                if (original_matrix[i][j] == y[node_S[i]] + y[node_T[j]]) and not subgraph_matrix[i][j][0] == original_matrix[i][j]:
+                    print(i, j)
                     subgraph_matrix[i][j] = (original_matrix[i][j], True)
-        return add_matching(node_S, node_T, subgraph_matrix, matching, y, original_matrix)
+        print("updating y again")
+        return add_matching(node_S, node_T, subgraph_matrix, matching, y, original_matrix, n+1)
     else:
 
 
         ####   change this properly 
-
-
+        print("increasing matching")
+        new_matching = []
+        print(Z, Rs, Rt)
         # this means there is a path from Rs to Rt using only the edges defined yet, which forms an augmenting path
+        foundPath = False
         for u in Rs:
-            for v in bfs(u, adj_list):
-            
+            for v in (bfs(u, adj_list) & Rt):
+                foundPath = True
+                print(u, v)
                 path = find_path(u, v, adj_list)
-                for i in range(0, len(path)-1, 2):
+                print(path)
+                for i in range(0, len(path)-1):
                     # as path is alternating, the first element is in S, second in T and so on
-                    subgraph_matrix[path[i]][path[i+1]] = (subgraph_matrix[path[i]][path[i+1]][0], not subgraph_matrix[path[i]][path[i+1]][1])
+                    # print(subgraph_matrix)
+                    subgraph_matrix[node_to_index_map[path[i]]][node_to_index_map[path[i+1]]] = (subgraph_matrix[node_to_index_map[path[i]]][node_to_index_map[path[i+1]]][0], not subgraph_matrix[node_to_index_map[path[i]]][node_to_index_map[path[i+1]]][1])
                 new_matching = []
                 for i in range(len(subgraph_matrix)):
                     for j in range(len(subgraph_matrix[i])):
                         if subgraph_matrix[i][j][0] != INF:
-                            if subgraph_matrix[i][j][1]:
-                                new_matching.append((i, j))
-                            else:
-                                new_matching.append((j, i))
-                return new_matching
+                            if not subgraph_matrix[i][j][1]:
+                                new_matching.append((node_T[j], node_S[i]))
+                          
+                break
+            if foundPath:
+                break
+        print(subgraph_matrix)
+        print(new_matching)
+        
+        return add_matching(node_S, node_T, subgraph_matrix, new_matching, y, original_matrix, n+1)
 
 
 node_S = ['a', 'b', 'c']
@@ -169,7 +197,10 @@ matching = []
 y = {'a': 0, 'b': 0, 'c': 0, 'A': 0, 'B': 0, 'C': 0}
 original_matrix = [[1, 2, 5], [3, 9, 4], [5, 8, 2]]
 
-print(add_matching(node_S, node_T, subgraph_matrix, matching, y, original_matrix))
+# adj_list = {'a': [('A', 1)], 'b': [], 'c': [], 'A': [], 'B': [], 'C': []}
+# print(find_path('a', 'A', adj_list))
+
+print(add_matching(node_S, node_T, subgraph_matrix, matching, y, original_matrix, 0))
 
 
 
