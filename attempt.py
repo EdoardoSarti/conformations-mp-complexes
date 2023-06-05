@@ -1,4 +1,5 @@
 import queue
+import copy
 
 INF = 1000000000000000000000000 # infinity
 
@@ -98,10 +99,15 @@ def make_adj_list(subgraph_matrix):
 
 
 def score(matching, original_matrix):
+    node_to_index_map = {}
+    for i in range(len(node_S)):
+        node_to_index_map[node_S[i]] = i
+    for j in range(len(node_T)):
+        node_to_index_map[node_T[j]] = j
     final_score = 0
     for pair in matching:
-        final_score += original_matrix[pair[1]][pair[0]]
-
+        final_score += original_matrix[node_to_index_map[pair[1]]][node_to_index_map[pair[0]]]
+    return final_score
 
 def add_matching(node_S, node_T, subgraph_matrix, matching, y, original_matrix, n):
     # matching is the matching uptil now, we need to improve that
@@ -113,7 +119,7 @@ def add_matching(node_S, node_T, subgraph_matrix, matching, y, original_matrix, 
     
 
     # matching is a list of tuples, giving the matching from node_T to node_S, as a directed graph
-
+    
     if(len(matching) == len(node_S)):
         return y, matching, score(matching, original_matrix)
     
@@ -159,9 +165,12 @@ def add_matching(node_S, node_T, subgraph_matrix, matching, y, original_matrix, 
         delta = INF
         for i in range(len(original_matrix)):
             for j in range(len(original_matrix[i])):
-                if node_S[i] in Z&S and node_T[j] in T-Z:
+                if node_S[i] in Z&S and node_T[j] in T-Z and original_matrix[i][j] != INF:
                     # print(i, j)
                     delta = min(delta, original_matrix[i][j] - y[node_S[i]] - y[node_T[j]])
+
+        if delta == INF:
+            return {}, [], INF
         # print("delta" , delta)
         # now add this value of delta to all vertices in Z & S and subtract from Z & T
         # print(Z, S, T)
@@ -182,7 +191,7 @@ def add_matching(node_S, node_T, subgraph_matrix, matching, y, original_matrix, 
     else:
 
 
-        ####   change this properly 
+        
         # print("increasing matching")
         # print("FINALLY HERE")
         new_matching = []
@@ -237,36 +246,125 @@ original_matrix = [[1, 2, 5], [1, 2, 4], [5, 8, 10]]
 # print(find_path('a', 'A', adj_list))
 
 
-def hungarian(node_S, node_T, original_matrix, K):
+def hungarian(node_S, node_T, original_matrix):
+    subgraph_matrix = []
+    n = len(node_S)
+    for i in range(n):
+        row = []
+        for j in range(n):
+            row.append((INF, True))
+
+        subgraph_matrix.append(row)
+
+    matching = []
+    y = {}
+    for u in node_S:
+        y[u] = 0
+    for v in node_T:
+        y[v] = 0
     return add_matching(node_S, node_T, subgraph_matrix, matching, y, original_matrix, 0)
 
-print(hungarian(node_S, node_T, original_matrix))
+# print(hungarian(node_S, node_T, original_matrix))
+
+def find_second_best(node_S, node_T, original_matrix):
+    node_to_index_map = {}
+    for i in range(len(node_S)):
+        node_to_index_map[node_S[i]] = i
+    for j in range(len(node_T)):
+        node_to_index_map[node_T[j]] = j
 
 
-# def kth_best_matching(node_S, node_T, original_matrix, K):
-#     n = len(node_S)
-#     y, matching, final_score = hungarian(node_S, node_T, original_matrix)
-#     v1 = final_score
-#     L = [(original_matrix, v1)]
-#     k = 1
-#     while True:
-#         L2 = []
-#         L3 = []
-#         for graph in L:
-#             if graph[1] == v1:
-#                 L2.append(graph)
-#             else:
-#                 L3.append(graph)
+    
+    initial_subgraph = copy.deepcopy(original_matrix)
+    n = len(node_S)
+    y, matching, optimal_score = hungarian(node_S, node_T, original_matrix)
+    print(y, matching)
+    for i in range(n):
+        for j in range(n):
+            if original_matrix[i][j] != y[node_S[i]] + y[node_T[j]]:
+                initial_subgraph[i][j] = (INF, True)
+            else:
+                initial_subgraph[i][j] = (original_matrix[i][j], True)
+    
+    print(initial_subgraph)
+    
+    # initial subgraph is the equivalent of E0
 
-#         L = L3
-#         if k == K:
-#             return v1
+    min_ans = INF
+    y_2ndoptimal = copy.deepcopy(y)
+    matching2ndoptimal = []
+    for k in range(n):  # k is the index of vertex to be considered
+        # for k, we need to modify original matrix and 
+        print("k", k)
+        y_copy = copy.deepcopy(y)
+        original_matrix_i = copy.deepcopy(original_matrix)
+        initial_subgraph = copy.deepcopy(original_matrix)
+        for i in range(n):
+            for j in range(n):
+                if original_matrix[i][j] != y[node_S[i]] + y[node_T[j]]:
+                    initial_subgraph[i][j] = (INF, True)
+                else:
+                    initial_subgraph[i][j] = (original_matrix[i][j], True)
+        print(initial_subgraph)
+        for i in range(k):
+            for j in range(n):
+                original_matrix_i[i][j] = original_matrix[i][j]
 
-#         pass
+        for j in range(n):
+            if original_matrix[k][j] == y[node_S[k]] + y[node_T[j]]:
+                original_matrix_i[k][j] = INF
+            else:
+                original_matrix_i[k][j] = original_matrix[k][j]
 
+        for i in range(k+1, n):
+            for j in range(n):
+                if original_matrix[i][j] == y[node_S[i]] + y[node_T[j]]:
+                    original_matrix_i[i][j] = original_matrix[i][j]
+
+                else:
+                    original_matrix_i[i][j] = INF
+
+        # now we have the Ei ready as original_matrix_i, now need to construct the subgraph_matrix which will be E0 but need to add in the directions based on the matching
+        # need to remove the matches corresponding to vertex k
+        print(original_matrix_i)
+        for j in range(n):
+                initial_subgraph[k][j] = (INF, True) # deleting the tight edges that might've been here
+
+        updated_matching = []
+        for pair in matching:
+            if node_to_index_map[pair[1]] != k:
+                updated_matching.append(pair)
+
+        for pair in updated_matching:
+            initial_subgraph[node_to_index_map[pair[1]]][node_to_index_map[pair[0]]] = (initial_subgraph[node_to_index_map[pair[1]]][node_to_index_map[pair[0]]][0], not initial_subgraph[node_to_index_map[pair[1]]][node_to_index_map[pair[0]]][1])
+
+        print(initial_subgraph, updated_matching, y, original_matrix_i)
+        
+        # if k == 1:
+        #     break
+
+        y2, matching2, optimal_score2 = add_matching(node_S, node_T, initial_subgraph, updated_matching, y_copy, original_matrix_i, 0)
+
+        if min_ans > optimal_score2:
+            min_ans = optimal_score2
+            y_2ndoptimal = y2
+            matching2ndoptimal = matching2
+        
+    return y_2ndoptimal, matching2ndoptimal, min_ans
         
 
+
+
+        # now we have the updated matching, now set the directions of the tight edges in initial_subgraph
+
+
+print(find_second_best(node_S, node_T, original_matrix))       
         
+        
+
+####################################################
+
+# original_matrix = [[1, 2, 5], [1, 2, 4], [5, 8, 10]],
 
 
 
